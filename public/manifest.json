@@ -1,0 +1,14 @@
+{
+  "name": "UBriss — Croissance virale pour créateurs africains",
+  "short_name": "UBriss",
+  "description": "Scripts viraux générés par IA, planification multi-plateformes et paiement Mobile Money.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
