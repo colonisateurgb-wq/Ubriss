@@ -4,15 +4,16 @@ import { createClient } from "@supabase/supabase-js";
  * Browser/client-safe Supabase client (anon key only — respects RLS).
  * Server-only operations that need the service role key should create
  * their own client inline inside the API route, never export it from here.
+ *
+ * Returns null when env vars are missing so callers can fall back to a
+ * demo mode instead of crashing (see app/(auth)/login/page.tsx).
  */
 export function getSupabaseBrowserClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    throw new Error(
-      "Supabase n'est pas configuré. Ajoute NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY dans .env.local."
-    );
+    return null;
   }
 
   return createClient(url, anonKey);

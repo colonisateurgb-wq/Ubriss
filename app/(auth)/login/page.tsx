@@ -8,7 +8,7 @@ import { NICHES, PLATFORMS } from "@/data/options";
 import { Niche, Platform } from "@/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type Step = "email" | "code" | "niche" | "platform" | "goal";
 
