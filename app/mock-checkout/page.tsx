@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Smartphone, CheckCircle2 } from "lucide-react";
 import { formatFcfa } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-export default function MockCheckoutPage() {
+function MockCheckoutContent() {
   const params = useSearchParams();
   const router = useRouter();
   const amount = Number(params.get("amount") ?? 0);
@@ -47,5 +47,13 @@ export default function MockCheckoutPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function MockCheckoutPage() {
+  return (
+    <Suspense fallback={null}>
+      <MockCheckoutContent />
+    </Suspense>
   );
 }
