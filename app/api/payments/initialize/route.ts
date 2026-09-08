@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { initializePayment } from "@/lib/notchpay";
 import { PLANS } from "@/data/plans";
+import { getSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   planId: z.enum(["createur", "pro"]),
@@ -41,8 +42,24 @@ export async function POST(request: NextRequest) {
       description: `Abonnement UBriss — ${plan.name}`,
     });
 
-    // TODO (Supabase): persist a `pending` row in `subscriptions` keyed by
-    // session.reference here, so the webhook has something to flip to `active`.
+    // Persist a `pending` row so the webhook has something to flip to
+    // `active` once Notch Pay confirms the payment.
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabaseServerClient();
+      const {
+        data: { user },
+      } = await supabase!.auth.getUser();
+
+      if (user) {
+        await supabase!.from("subscriptions").insert({
+          user_id: user.id,
+          plan: plan.id,
+          reference: session.reference,
+          status: "pending",
+          amount_fcfa: plan.priceFcfa,
+        });
+      }
+    }
 
     return NextResponse.json(session, { status: 200 });
   } catch (error) {

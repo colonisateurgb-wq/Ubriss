@@ -7,7 +7,23 @@ export const NICHES: { id: Niche; label: string }[] = [
   { id: "tech", label: "Tech" },
   { id: "vente", label: "Vente en ligne" },
   { id: "beaute", label: "Beauté" },
+  { id: "coiffure", label: "Coiffure & tresses" },
   { id: "business", label: "Business / Services" },
+  { id: "immobilier", label: "Immobilier" },
+  { id: "education", label: "Éducation & formation" },
+  { id: "sante", label: "Santé & bien-être" },
+  { id: "artisanat", label: "Artisanat & fait main" },
+  { id: "agriculture", label: "Agriculture & élevage" },
+  { id: "transport", label: "Transport & logistique" },
+  { id: "automobile", label: "Automobile" },
+  { id: "evenementiel", label: "Événementiel" },
+  { id: "freelance", label: "Services digitaux & freelance" },
+  { id: "musique", label: "Musique & divertissement" },
+  { id: "sport", label: "Sport & coaching" },
+  { id: "voyage", label: "Voyage & tourisme" },
+  { id: "finance", label: "Finance & assurance" },
+  { id: "ong", label: "ONG & associatif" },
+  { id: "juridique", label: "Services juridiques" },
 ];
 
 export const TONES: { id: Tone; label: string; description: string }[] = [

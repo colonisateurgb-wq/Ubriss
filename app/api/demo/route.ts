@@ -3,7 +3,12 @@ import { z } from "zod";
 import { generateScript } from "@/lib/ai-generator";
 
 const bodySchema = z.object({
-  niche: z.enum(["fitness", "mode", "restauration", "tech", "vente", "beaute", "business"]),
+  niche: z.enum([
+    "fitness", "mode", "restauration", "tech", "vente", "beaute", "business",
+    "coiffure", "immobilier", "education", "sante", "artisanat", "agriculture",
+    "transport", "automobile", "evenementiel", "freelance", "musique", "sport",
+    "voyage", "finance", "ong", "juridique",
+  ]),
 });
 
 export async function POST(request: NextRequest) {

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Bookmark, CalendarPlus, Clock } from "lucide-react";
+import { Copy, Check, Bookmark, CalendarPlus, Clock, Loader2 } from "lucide-react";
 import { GeneratedScript } from "@/types";
 import { Button } from "@/components/ui/button";
 
 export function ScriptOutputCard({ script }: { script: GeneratedScript }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function fullText() {
     return [
@@ -27,6 +28,20 @@ export function ScriptOutputCard({ script }: { script: GeneratedScript }) {
     await navigator.clipboard.writeText(fullText());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/scripts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(script),
+      });
+      if (res.ok) setSaved(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -84,8 +99,8 @@ export function ScriptOutputCard({ script }: { script: GeneratedScript }) {
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? "Copié" : "Copier le script"}
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => setSaved(true)} disabled={saved}>
-          <Bookmark className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={handleSave} disabled={saved || saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bookmark className="h-4 w-4" />}
           {saved ? "Sauvegardé" : "Sauvegarder"}
         </Button>
         <Button variant="secondary" size="sm">

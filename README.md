@@ -124,21 +124,50 @@ utilisable, privilégie la méthode GitHub ci-dessus.
 | Fonctionnalité | État |
 |---|---|
 | Interface (landing, dashboard, générateur, planificateur) | Réelle, prête à l'emploi |
-| Génération de scripts | Templates simulés par défaut ; bascule vers GPT-4o-mini réel en passant `OPENAI_MODE=live` + clé API |
-| Paiement Mobile Money | Simulé par défaut (`/mock-checkout`) ; bascule vers Notch Pay réel en passant `NOTCHPAY_MODE=live` + clés |
-| Authentification | Formulaire présent, pas encore branché à Supabase (utilisateur fictif utilisé partout) |
-| Sauvegarde des scripts / posts programmés | Stockage en mémoire (perdu au rechargement) ; le schéma SQL Supabase est prêt dans `lib/supabase.ts`, à exécuter puis brancher dans les routes API |
+| Génération de scripts | Templates simulés par défaut (`AI_PROVIDER=mock`) ; bascule vers Gemini (gratuit) avec `AI_PROVIDER=gemini` + `GEMINI_API_KEY`, ou vers GPT-4o-mini (payant) avec `AI_PROVIDER=openai` + `OPENAI_API_KEY` |
+| Paiement Mobile Money | Réel dès que `NOTCHPAY_MODE=live` + clés sont configurés ; simulé sinon (`/mock-checkout`) |
+| Authentification | Réelle (email + code à 6 chiffres) dès que Supabase est configuré ; sinon connexion simulée pour garder la démo utilisable |
+| Sauvegarde des scripts / posts programmés | Le schéma SQL Supabase gère déjà les abonnements (`subscriptions`) et les profils (`profiles`) automatiquement ; `scripts` et `scheduled_posts` sont créés mais pas encore branchés aux routes API (stockage en mémoire pour l'instant) |
 
 ---
 
-## 5. Prochaines étapes techniques suggérées
+## 5. Configurer la génération IA gratuite (Gemini)
 
-1. Créer un projet sur [supabase.com](https://supabase.com), exécuter le
-   schéma SQL présent en commentaire dans `lib/supabase.ts`.
-2. Brancher l'authentification réelle dans `app/(auth)/login/page.tsx`.
-3. Remplacer `MOCK_USER` (`data/mock-user.ts`) par la session Supabase dans
-   `app/dashboard/layout.tsx`.
-4. Créer un compte marchand sur [notchpay.co](https://notchpay.co) pour
-   obtenir les vraies clés MTN MoMo / Orange Money.
-5. Ajouter une vraie clé OpenAI si tu veux des scripts générés dynamiquement
-   plutôt que les templates.
+1. Va sur [aistudio.google.com](https://aistudio.google.com), connecte-toi
+   avec un compte Google.
+2. Clique **Get API key → Create API key**. Aucune carte bancaire requise.
+3. Dans Netlify, ajoute `AI_PROVIDER=gemini` et `GEMINI_API_KEY=` (colle ta
+   clé), puis redéploie.
+4. Le générateur écrit maintenant de vrais scripts avec Gemini, gratuitement
+   dans les limites du quota quotidien gratuit de Google (largement
+   suffisant pour démarrer). Si tu dépasses un jour ce quota, tu peux
+   basculer vers `AI_PROVIDER=openai` à la place.
+
+## 6. Configurer Supabase (obligatoire pour une vraie authentification)
+
+1. Crée un projet sur [supabase.com](https://supabase.com).
+2. Dans **SQL Editor**, colle et exécute le schéma présent en commentaire
+   dans `lib/db-schema.ts` (tables `profiles`, `subscriptions`, `scripts`,
+   `scheduled_posts`, le trigger de création automatique de profil, et les
+   policies RLS).
+3. **Important** — active le code à 6 chiffres par email : va dans
+   **Authentication → Email Templates → Confirm signup / Magic Link** et
+   assure-toi que le template contient bien `{{ .Token }}` (le code), pas
+   seulement le lien magique par défaut.
+4. Dans **Project Settings → API** (ou **Data API**), copie les 3 valeurs
+   dans les variables d'environnement Netlify : `NEXT_PUBLIC_SUPABASE_URL`
+   (le Project URL, SANS le suffixe `/rest/v1/`), `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`.
+5. Redéploie. Tant que ces variables ne sont pas définies, le site reste en
+   mode démo (connexion simulée, utilisateur fictif) automatiquement — rien
+   ne casse en attendant.
+
+## 7. Configurer le webhook Notch Pay (obligatoire pour activer les abonnements automatiquement)
+
+1. Dans ton dashboard Notch Pay, va dans les réglages Webhooks.
+2. Ajoute l'URL : `https://TON-SITE.netlify.app/api/payments/webhook`.
+3. Ajoute `NOTCHPAY_PUBLIC_KEY`, `NOTCHPAY_SECRET_KEY` et `NOTCHPAY_MODE=live`
+   dans les variables d'environnement Netlify, puis redéploie.
+4. Une fois Supabase **et** Notch Pay configurés ensemble, un paiement
+   confirmé met automatiquement à jour le plan de l'utilisateur dans la base
+   de données — sans aucune action manuelle.

@@ -5,7 +5,23 @@ export type Niche =
   | "tech"
   | "vente"
   | "beaute"
-  | "business";
+  | "business"
+  | "coiffure"
+  | "immobilier"
+  | "education"
+  | "sante"
+  | "artisanat"
+  | "agriculture"
+  | "transport"
+  | "automobile"
+  | "evenementiel"
+  | "freelance"
+  | "musique"
+  | "sport"
+  | "voyage"
+  | "finance"
+  | "ong"
+  | "juridique";
 
 export type Tone =
   | "educatif"

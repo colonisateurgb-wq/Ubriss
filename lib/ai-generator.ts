@@ -1,6 +1,10 @@
 import { GeneratedScript, ScriptGenerationInput } from "@/types";
 
-const isLiveMode = process.env.OPENAI_MODE === "live";
+// AI_PROVIDER controls which engine writes the scripts:
+// - "mock"   (default) — built-in templates, zero cost, works with no keys
+// - "gemini" — Google Gemini API, has a genuine free tier (no card needed)
+// - "openai" — GPT-4o-mini, paid but very cheap
+const AI_PROVIDER = (process.env.AI_PROVIDER ?? "mock") as "mock" | "gemini" | "openai";
 
 const HOOK_TEMPLATES: Record<string, { visual: string; speech: string }[]> = {
   fitness: [
@@ -47,11 +51,7 @@ function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/**
- * Deterministic-ish mock generator — used until OPENAI_MODE=live is set.
- * Structurally identical to what the live path returns, so swapping the
- * mode env var is the only change needed anywhere else in the app.
- */
+/** Mock generator — used when AI_PROVIDER=mock (the default). Zero cost, zero setup. */
 async function generateMock(input: ScriptGenerationInput): Promise<GeneratedScript> {
   await new Promise((resolve) => setTimeout(resolve, 900)); // feels like a real call
 
@@ -100,15 +100,67 @@ async function generateMock(input: ScriptGenerationInput): Promise<GeneratedScri
   };
 }
 
-/**
- * Live path — GPT-4o-mini with a strict JSON schema so the response maps
- * 1:1 onto GeneratedScript without any free-text parsing. Requires
- * OPENAI_API_KEY and OPENAI_MODE=live.
- */
-async function generateLive(input: ScriptGenerationInput): Promise<GeneratedScript> {
+const SYSTEM_PROMPT =
+  "Tu es un scénariste spécialisé en vidéos courtes virales pour créateurs et commerces d'Afrique francophone. Réponds uniquement en JSON valide avec les clés: hook (objet avec visual et speech), body (array de 3 chaînes), cta (chaîne), hashtags (array de 3 chaînes), bestPostingTime (chaîne).";
+
+function buildUserPrompt(input: ScriptGenerationInput): string {
+  return `Niche: ${input.niche}. Ton: ${input.tone}. Objectif: ${input.objective}. Génère un script de 30 secondes.`;
+}
+
+/** Gemini path — free tier, no card required. Default model is Flash-Lite for the highest free daily quota. */
+async function generateGemini(input: ScriptGenerationInput): Promise<GeneratedScript> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY manquant alors que AI_PROVIDER=gemini.");
+  }
+
+  const model = process.env.GEMINI_MODEL ?? "gemini-2.5-flash-lite";
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${SYSTEM_PROMPT}\n\n${buildUserPrompt(input)}` }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Gemini a renvoyé une erreur: ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("Réponse Gemini vide ou mal formée.");
+  }
+  const parsed = JSON.parse(text);
+
+  return {
+    id: `scr_${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    niche: input.niche,
+    tone: input.tone,
+    objective: input.objective,
+    ...parsed,
+  };
+}
+
+/** OpenAI path — GPT-4o-mini, paid but cheap. Opt in with AI_PROVIDER=openai. */
+async function generateOpenAI(input: ScriptGenerationInput): Promise<GeneratedScript> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY manquant alors que OPENAI_MODE=live.");
+    throw new Error("OPENAI_API_KEY manquant alors que AI_PROVIDER=openai.");
   }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -121,15 +173,8 @@ async function generateLive(input: ScriptGenerationInput): Promise<GeneratedScri
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
-        {
-          role: "system",
-          content:
-            "Tu es un scénariste spécialisé en vidéos courtes virales pour créateurs et commerces d'Afrique francophone. Réponds uniquement en JSON valide avec les clés: hook (visual, speech), body (array de 3 chaînes), cta (chaîne), hashtags (array de 3 chaînes), bestPostingTime (chaîne).",
-        },
-        {
-          role: "user",
-          content: `Niche: ${input.niche}. Ton: ${input.tone}. Objectif: ${input.objective}. Génère un script de 30 secondes.`,
-        },
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: buildUserPrompt(input) },
       ],
     }),
   });
@@ -152,5 +197,12 @@ async function generateLive(input: ScriptGenerationInput): Promise<GeneratedScri
 }
 
 export async function generateScript(input: ScriptGenerationInput): Promise<GeneratedScript> {
-  return isLiveMode ? generateLive(input) : generateMock(input);
+  switch (AI_PROVIDER) {
+    case "gemini":
+      return generateGemini(input);
+    case "openai":
+      return generateOpenAI(input);
+    default:
+      return generateMock(input);
+  }
 }

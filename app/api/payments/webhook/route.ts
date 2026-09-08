@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 /**
  * Notch Pay signs every webhook body with your secret key so you can trust
@@ -44,20 +45,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Référence manquante" }, { status: 400 });
   }
 
+  const supabase = isSupabaseAdminConfigured() ? getSupabaseAdminClient() : null;
+
   switch (transactionStatus) {
     case "complete":
     case "successful": {
-      // TODO (Supabase): look up the `pending` subscription row by
-      // `reference`, flip it to `active`, set the plan's generation/account
-      // limits on the user row, and send a confirmation (WhatsApp/email).
       console.info(`[notchpay:webhook] Paiement confirmé pour ${reference}`);
+
+      if (supabase) {
+        const { data: subscription } = await supabase
+          .from("subscriptions")
+          .update({ status: "active", confirmed_at: new Date().toISOString() })
+          .eq("reference", reference)
+          .select("user_id, plan")
+          .single();
+
+        if (subscription) {
+          const limitsByPlan: Record<string, { generations: number; accounts: number }> = {
+            createur: { generations: 30, accounts: 2 },
+            pro: { generations: 999999, accounts: 5 },
+          };
+          const limits = limitsByPlan[subscription.plan] ?? { generations: 3, accounts: 1 };
+
+          await supabase
+            .from("profiles")
+            .update({
+              plan: subscription.plan,
+              trial_generations_left: limits.generations,
+              connected_accounts: limits.accounts,
+            })
+            .eq("id", subscription.user_id);
+        }
+      }
       break;
     }
     case "failed":
     case "canceled": {
-      // TODO (Supabase): mark the subscription row as `failed` and leave the
-      // user on their current plan.
       console.warn(`[notchpay:webhook] Paiement échoué pour ${reference}`);
+      if (supabase) {
+        await supabase.from("subscriptions").update({ status: "failed" }).eq("reference", reference);
+      }
       break;
     }
     default: {

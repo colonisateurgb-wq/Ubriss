@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Sparkles, CalendarClock, ArrowUpRight } from "lucide-react";
-import { MOCK_USER } from "@/data/mock-user";
+import { getCurrentUser } from "@/lib/get-current-user";
 
-export default function DashboardHome() {
+export default async function DashboardHome() {
+  const user = await getCurrentUser();
+
   return (
     <div className="mx-auto max-w-4xl">
       <h1 className="text-2xl font-bold tracking-tight">
-        Salut {MOCK_USER.name.split(" ")[0]} 👋
+        Salut {user.name.split(" ")[0]} 👋
       </h1>
       <p className="mt-1.5 text-mute">
         Voici ce que tu peux faire aujourd&apos;hui pour rester régulier sur tes publications.
@@ -51,15 +53,15 @@ export default function DashboardHome() {
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-mute">Offre actuelle</dt>
-            <dd className="mt-1 font-medium capitalize">{MOCK_USER.plan}</dd>
+            <dd className="mt-1 font-medium capitalize">{user.plan}</dd>
           </div>
           <div>
             <dt className="text-mute">Essais restants</dt>
-            <dd className="mt-1 font-medium">{MOCK_USER.trialGenerationsLeft} / 3</dd>
+            <dd className="mt-1 font-medium">{user.trialGenerationsLeft} / 3</dd>
           </div>
           <div>
             <dt className="text-mute">Comptes connectés</dt>
-            <dd className="mt-1 font-medium">{MOCK_USER.connectedAccounts}</dd>
+            <dd className="mt-1 font-medium">{user.connectedAccounts}</dd>
           </div>
         </dl>
       </div>

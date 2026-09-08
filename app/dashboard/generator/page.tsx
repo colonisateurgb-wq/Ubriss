@@ -24,7 +24,11 @@ export default function GeneratorPage() {
       });
 
       if (!res.ok) {
-        throw new Error("La génération a échoué. Réessaie.");
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 402) {
+          throw new Error(data.error ?? "Limite d'essais gratuits atteinte. Passe à un Pass pour continuer.");
+        }
+        throw new Error(data.error ?? "La génération a échoué. Réessaie.");
       }
 
       const data: GeneratedScript = await res.json();
@@ -57,9 +61,14 @@ export default function GeneratorPage() {
 
         <div>
           {error && (
-            <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              {error}
-            </p>
+            <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <p>{error}</p>
+              {error.toLowerCase().includes("gratuit") && (
+                <a href="/dashboard/settings" className="mt-2 inline-block underline">
+                  Voir les Pass payants →
+                </a>
+              )}
+            </div>
           )}
 
           {!error && !script && (

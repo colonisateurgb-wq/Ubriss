@@ -8,7 +8,7 @@ import { NICHES, PLATFORMS } from "@/data/options";
 import { Niche, Platform } from "@/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Step = "email" | "code" | "niche" | "platform" | "goal";
 
@@ -19,6 +19,7 @@ function LoginPageContent() {
   const isDemoMode = supabase === null;
 
   const [step, setStep] = useState<Step>("email");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,7 @@ function LoginPageContent() {
   const [followerGoal, setFollowerGoal] = useState("");
 
   async function handleSendCode() {
-    if (!email) return;
+    if (!email || !fullName) return;
     setError(null);
 
     if (isDemoMode) {
@@ -42,7 +43,7 @@ function LoginPageContent() {
     setLoading(true);
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true },
+      options: { shouldCreateUser: true, data: { full_name: fullName } },
     });
     setLoading(false);
 
@@ -80,7 +81,7 @@ function LoginPageContent() {
       if (user) {
         await supabase
           .from("profiles")
-          .update({ niche, target_platform: platform })
+          .update({ niche, target_platform: platform, full_name: fullName || undefined })
           .eq("id", user.id);
       }
     }
@@ -116,6 +117,13 @@ function LoginPageContent() {
               </p>
 
               <div className="mt-6 space-y-3">
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Ton nom"
+                  className="w-full rounded-lg border border-ink-700 bg-ink-950 px-3.5 py-2.5 text-sm outline-none focus-visible:border-signal"
+                />
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-mute" />
                   <input
@@ -127,7 +135,7 @@ function LoginPageContent() {
                   />
                 </div>
                 {error && <p className="text-sm text-red-300">{error}</p>}
-                <Button onClick={handleSendCode} disabled={loading || !email} size="lg" className="w-full">
+                <Button onClick={handleSendCode} disabled={loading || !email || !fullName} size="lg" className="w-full">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Recevoir un code par email"}
                 </Button>
               </div>

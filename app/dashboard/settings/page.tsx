@@ -1,7 +1,9 @@
-import { MOCK_USER } from "@/data/mock-user";
+import { getCurrentUser } from "@/lib/get-current-user";
 import { UpgradePanel } from "@/components/dashboard/upgrade-panel";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getCurrentUser();
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -14,16 +16,16 @@ export default function SettingsPage() {
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between border-b border-ink-800 pb-3">
             <dt className="text-mute">Nom</dt>
-            <dd>{MOCK_USER.name}</dd>
+            <dd>{user.name}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-mute">Email</dt>
-            <dd>{MOCK_USER.email}</dd>
+            <dd>{user.email || "—"}</dd>
           </div>
         </dl>
       </div>
 
-      <UpgradePanel currentPlan={MOCK_USER.plan} />
+      <UpgradePanel currentPlan={user.plan} />
     </div>
   );
 }
