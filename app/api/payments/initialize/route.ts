@@ -1,72 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { initializePayment } from "@/lib/notchpay";
-import { PLANS } from "@/data/plans";
-import { getSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
-const bodySchema = z.object({
-  planId: z.enum(["createur", "pro"]),
-  email: z.string().email(),
-  phone: z
-    .string()
-    .min(9, "Numéro invalide")
-    .regex(/^[0-9+ ]+$/, "Numéro invalide"),
-});
-
-export async function POST(request: NextRequest) {
-  let parsed;
+export async function POST(request: Request) {
   try {
-    const json = await request.json();
-    parsed = bodySchema.parse(json);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Requête invalide", details: error instanceof Error ? error.message : error },
-      { status: 400 }
-    );
-  }
+    const body = await request.json();
 
-  const plan = PLANS.find((p) => p.id === parsed.planId);
-  if (!plan) {
-    return NextResponse.json({ error: "Offre inconnue" }, { status: 404 });
-  }
-
-  const origin = request.nextUrl.origin;
-
-  try {
-    const session = await initializePayment({
-      amount: plan.priceFcfa,
-      currency: "XAF",
-      email: parsed.email,
-      phone: parsed.phone,
-      callback_url: `${origin}/dashboard/settings?payment=success`,
-      description: `Abonnement UBriss — ${plan.name}`,
-    });
-
-    // Persist a `pending` row so the webhook has something to flip to
-    // `active` once Notch Pay confirms the payment.
-    if (isSupabaseConfigured()) {
-      const supabase = getSupabaseServerClient();
-      const {
-        data: { user },
-      } = await supabase!.auth.getUser();
-
-      if (user) {
-        await supabase!.from("subscriptions").insert({
-          user_id: user.id,
-          plan: plan.id,
-          reference: session.reference,
-          status: "pending",
-          amount_fcfa: plan.priceFcfa,
-        });
-      }
+    // 1. Récupération des clés API depuis l'environnement
+    const apiKey = process.env.PAYMENT_PROVIDER_SECRET_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Clé API de paiement non configurée sur le serveur." },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(session, { status: 200 });
-  } catch (error) {
-    console.error("[notchpay:initialize]", error);
+    // 2. Appel à l'API du prestataire de paiement (Exemple)
+    const response = await fetch("https://api.payment-provider.com/v1/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: data.message || "Échec chez le prestataire de paiement" },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (error: any) {
+    console.error("Erreur d'initialisation de paiement:", error);
+    // Renvoyer un JSON 500 propre au lieu de laisser Netlify renvoyer un 502
     return NextResponse.json(
-      { error: "Le paiement n'a pas pu être initié. Réessaie dans un instant." },
-      { status: 502 }
+      { error: error.message || "Erreur interne du serveur" },
+      { status: 500 }
     );
   }
 }
