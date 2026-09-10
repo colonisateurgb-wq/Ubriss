@@ -1,23 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PLANS } from "@/data/plans";
 import { formatFcfa, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PlanId } from "@/types";
 import { Loader2 } from "lucide-react";
 
-export function UpgradePanel({ currentPlan }: { currentPlan: PlanId }) {
+interface UpgradePanelProps {
+  currentPlan: PlanId;
+  defaultEmail?: string;
+  highlightPlan?: string;
+}
+
+export function UpgradePanel({ currentPlan, defaultEmail, highlightPlan }: UpgradePanelProps) {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const payablePlans = PLANS.filter((p) => p.id !== "gratuit");
 
+  useEffect(() => {
+    if (highlightPlan) {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightPlan]);
+
   async function handleUpgrade(planId: PlanId) {
     if (!email || !phone) {
-      setError("Renseigne ton email et ton numéro Mobile Money avant de continuer.");
+      setError("Renseigne ton numéro Mobile Money avant de continuer.");
       return;
     }
     setError(null);
@@ -38,7 +51,7 @@ export function UpgradePanel({ currentPlan }: { currentPlan: PlanId }) {
   }
 
   return (
-    <div className="rounded-xl2 border border-ink-700 bg-ink-900/40 p-6">
+    <div ref={panelRef} className="rounded-xl2 border border-ink-700 bg-ink-900/40 p-6">
       <h2 className="font-semibold">Passer à un Pass payant</h2>
       <p className="mt-1 text-sm text-mute">
         Paiement sécurisé via Notch Pay — MTN Mobile Money et Orange Money.
@@ -62,6 +75,7 @@ export function UpgradePanel({ currentPlan }: { currentPlan: PlanId }) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="6XX XXX XXX"
+            autoFocus={Boolean(highlightPlan)}
             className="mt-1.5 w-full rounded-lg border border-ink-700 bg-ink-950 px-3.5 py-2.5 text-sm outline-none focus-visible:border-signal"
           />
         </div>
@@ -75,7 +89,11 @@ export function UpgradePanel({ currentPlan }: { currentPlan: PlanId }) {
             key={plan.id}
             className={cn(
               "rounded-lg border p-4",
-              currentPlan === plan.id ? "border-signal/60 bg-signal-soft" : "border-ink-700"
+              currentPlan === plan.id
+                ? "border-signal/60 bg-signal-soft"
+                : highlightPlan === plan.id
+                ? "border-pulse/60 bg-pulse-soft"
+                : "border-ink-700"
             )}
           >
             <p className="font-medium">{plan.name}</p>
