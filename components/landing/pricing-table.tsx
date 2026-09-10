@@ -53,11 +53,14 @@ export function PricingTable() {
                 ))}
               </ul>
 
-              href={
-  plan.priceFcfa === 0
-    ? "/login"
-    : `/login?next=${encodeURIComponent(`/dashboard/settings?plan=${plan.id}`)}`
-}
+              <Link
+                href={
+                  plan.priceFcfa === 0
+                    ? "/login"
+                    : `/login?next=${encodeURIComponent(`/dashboard/settings?plan=${plan.id}`)}`
+                }
+                className="mt-8"
+              >
                 <Button
                   variant={plan.highlighted ? "primary" : "outline"}
                   className="w-full"
